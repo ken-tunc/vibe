@@ -14,7 +14,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, "  vibe <command> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Commands:\n")
-		fmt.Fprintf(os.Stderr, "  new           Create a new worktree for a task\n")
+		fmt.Fprintf(os.Stderr, "  new <task>    Create a new worktree for a task\n")
 		fmt.Fprintf(os.Stderr, "  statusline    Output statusline info from JSON input\n")
 		fmt.Fprintf(os.Stderr, "  version       Show version information\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
