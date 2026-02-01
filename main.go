@@ -14,7 +14,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, "  vibe <command> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Commands:\n")
-		fmt.Fprintf(os.Stderr, "  statusline    Output statusline info from JSON input\n\n")
+		fmt.Fprintf(os.Stderr, "  statusline    Output statusline info from JSON input\n")
+		fmt.Fprintf(os.Stderr, "  version       Show version information\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "  -h, --help\n")
@@ -28,6 +29,9 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
+			return
+		case "version":
+			fmt.Printf("vibe version %s\n", version)
 			return
 		}
 	}
