@@ -1,4 +1,4 @@
-package main
+package vibe
 
 import (
 	"bytes"
@@ -77,9 +77,15 @@ func TestRunStatusline(t *testing.T) {
 		{
 			name: "all fields",
 			input: StatusInput{
-				Model:         struct{ DisplayName string `json:"display_name"` }{DisplayName: "Opus"},
-				Workspace:     struct{ CurrentDir string `json:"current_dir"` }{CurrentDir: "/home/user/test"},
-				ContextWindow: struct{ UsedPercentage *float64 `json:"used_percentage"` }{UsedPercentage: &pct25},
+				Model: struct {
+					DisplayName string `json:"display_name"`
+				}{DisplayName: "Opus"},
+				Workspace: struct {
+					CurrentDir string `json:"current_dir"`
+				}{CurrentDir: "/home/user/test"},
+				ContextWindow: struct {
+					UsedPercentage *float64 `json:"used_percentage"`
+				}{UsedPercentage: &pct25},
 			},
 			home:   "/home/user",
 			branch: "main",
@@ -88,9 +94,15 @@ func TestRunStatusline(t *testing.T) {
 		{
 			name: "no branch",
 			input: StatusInput{
-				Model:         struct{ DisplayName string `json:"display_name"` }{DisplayName: "Sonnet"},
-				Workspace:     struct{ CurrentDir string `json:"current_dir"` }{CurrentDir: "/tmp"},
-				ContextWindow: struct{ UsedPercentage *float64 `json:"used_percentage"` }{UsedPercentage: &pct50},
+				Model: struct {
+					DisplayName string `json:"display_name"`
+				}{DisplayName: "Sonnet"},
+				Workspace: struct {
+					CurrentDir string `json:"current_dir"`
+				}{CurrentDir: "/tmp"},
+				ContextWindow: struct {
+					UsedPercentage *float64 `json:"used_percentage"`
+				}{UsedPercentage: &pct50},
 			},
 			home:   "/home/user",
 			branch: "",
@@ -99,8 +111,12 @@ func TestRunStatusline(t *testing.T) {
 		{
 			name: "no percentage",
 			input: StatusInput{
-				Model:     struct{ DisplayName string `json:"display_name"` }{DisplayName: "Opus"},
-				Workspace: struct{ CurrentDir string `json:"current_dir"` }{CurrentDir: "/home/user/test"},
+				Model: struct {
+					DisplayName string `json:"display_name"`
+				}{DisplayName: "Opus"},
+				Workspace: struct {
+					CurrentDir string `json:"current_dir"`
+				}{CurrentDir: "/home/user/test"},
 			},
 			home:   "/home/user",
 			branch: "feature",
@@ -109,8 +125,12 @@ func TestRunStatusline(t *testing.T) {
 		{
 			name: "minimal",
 			input: StatusInput{
-				Model:     struct{ DisplayName string `json:"display_name"` }{DisplayName: "Haiku"},
-				Workspace: struct{ CurrentDir string `json:"current_dir"` }{CurrentDir: "/"},
+				Model: struct {
+					DisplayName string `json:"display_name"`
+				}{DisplayName: "Haiku"},
+				Workspace: struct {
+					CurrentDir string `json:"current_dir"`
+				}{CurrentDir: "/"},
 			},
 			home:   "/home/user",
 			branch: "",
@@ -134,4 +154,3 @@ func TestRunStatusline(t *testing.T) {
 		})
 	}
 }
-

@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/ken-tunc/vibe/src"
 )
 
 const version = "0.1.0"
@@ -24,7 +26,7 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "statusline":
-			if err := statusline(); err != nil {
+			if err := vibe.Statusline(); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}

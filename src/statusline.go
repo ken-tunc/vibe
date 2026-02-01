@@ -1,4 +1,4 @@
-package main
+package vibe
 
 import (
 	"encoding/json"
@@ -21,7 +21,7 @@ type StatusInput struct {
 	} `json:"context_window"`
 }
 
-func statusline() error {
+func Statusline() error {
 	var input StatusInput
 	if err := json.NewDecoder(os.Stdin).Decode(&input); err != nil {
 		return err
