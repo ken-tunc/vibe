@@ -28,7 +28,7 @@ func NewTask(taskName string) error {
 		return fmt.Errorf("not a git repository")
 	}
 
-	repoName := getRepoName()
+	repoName := getRepoName(gitRoot)
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
@@ -80,12 +80,15 @@ func getGitRoot() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func getRepoName() string {
+func getRepoName(gitRoot string) string {
 	out, err := exec.Command("git", "rev-parse", "--git-common-dir").Output()
 	if err != nil {
 		return ""
 	}
 	gitDir := strings.TrimSpace(string(out))
+	if !filepath.IsAbs(gitDir) {
+		gitDir = filepath.Join(gitRoot, gitDir)
+	}
 	return filepath.Base(filepath.Dir(gitDir))
 }
 
