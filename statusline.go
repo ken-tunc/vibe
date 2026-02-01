@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -26,22 +27,33 @@ func statusline() error {
 		return err
 	}
 
-	cwd := input.Workspace.CurrentDir
-	if home, _ := os.UserHomeDir(); home != "" && strings.HasPrefix(cwd, home) {
-		cwd = "~" + cwd[len(home):]
+	home, _ := os.UserHomeDir()
+	branch := getGitBranch(input.Workspace.CurrentDir)
+	return runStatusline(os.Stdout, input, home, branch)
+}
+
+func runStatusline(w io.Writer, input StatusInput, home, branch string) error {
+	cwd := replaceTilde(input.Workspace.CurrentDir, home)
+	fmt.Fprintln(w, formatStatusOutput(input.Model.DisplayName, cwd, branch, input.ContextWindow.UsedPercentage))
+	return nil
+}
+
+func replaceTilde(path, home string) string {
+	if home != "" && strings.HasPrefix(path, home) {
+		return "~" + path[len(home):]
 	}
+	return path
+}
 
-	out := fmt.Sprintf("🤖 %s | 📁 %s", input.Model.DisplayName, cwd)
-
-	if branch := getGitBranch(input.Workspace.CurrentDir); branch != "" {
+func formatStatusOutput(model, cwd, branch string, usedPercentage *float64) string {
+	out := fmt.Sprintf("🤖 %s | 📁 %s", model, cwd)
+	if branch != "" {
 		out += fmt.Sprintf(" | 🌿 %s", branch)
 	}
-	if input.ContextWindow.UsedPercentage != nil {
-		out += fmt.Sprintf(" | 💭 %.0f%%", *input.ContextWindow.UsedPercentage)
+	if usedPercentage != nil {
+		out += fmt.Sprintf(" | 💭 %.0f%%", *usedPercentage)
 	}
-
-	fmt.Println(out)
-	return nil
+	return out
 }
 
 func getGitBranch(dir string) string {
