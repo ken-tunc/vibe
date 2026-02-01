@@ -8,8 +8,6 @@ import (
 	"github.com/ken-tunc/vibe/src"
 )
 
-const version = "0.1.0"
-
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "vibe - A personal vibe coding tool\n\n")
