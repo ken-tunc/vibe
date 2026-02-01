@@ -41,7 +41,7 @@ jobs:
 
       - name: Build binary
         if: steps.check_tag.outputs.exists == 'false'
-        run: GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o vibe-darwin-arm64 .
+        run: GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o vibe-darwin-arm64 .
 
       - name: Create Release
         if: steps.check_tag.outputs.exists == 'false'
