@@ -2,8 +2,9 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    paths:
+      - "version.go"
 
 permissions:
   contents: write
@@ -16,15 +17,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -oP 'const version = "\K[^"]+' version.go)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.version.outputs.tag }}$"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Go
+        if: steps.check_tag.outputs.exists == 'false'
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
       - name: Build binary
+        if: steps.check_tag.outputs.exists == 'false'
         run: GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o vibe-darwin-arm64 .
 
       - name: Create Release
+        if: steps.check_tag.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create ${{ github.ref_name }} vibe-darwin-arm64 --generate-notes
+        run: gh release create ${{ steps.version.outputs.tag }} vibe-darwin-arm64 --generate-notes
