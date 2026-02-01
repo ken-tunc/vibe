@@ -1,6 +1,7 @@
 package vibe
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -27,7 +28,7 @@ func NewTask(taskName string) error {
 		return fmt.Errorf("not a git repository")
 	}
 
-	repoName := filepath.Base(gitRoot)
+	repoName := getRepoName()
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
@@ -52,6 +53,10 @@ func NewTask(taskName string) error {
 		cmd.Run()
 	}
 
+	if err := addToClaudeConfig(worktreePath); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to update claude config: %v\n", err)
+	}
+
 	if !commandExists("claude") {
 		fmt.Fprintln(os.Stderr, "Warning: claude not installed")
 		return nil
@@ -73,6 +78,15 @@ func getGitRoot() (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+func getRepoName() string {
+	out, err := exec.Command("git", "rev-parse", "--git-common-dir").Output()
+	if err != nil {
+		return ""
+	}
+	gitDir := strings.TrimSpace(string(out))
+	return filepath.Base(filepath.Dir(gitDir))
 }
 
 func sanitizeTaskName(name string) string {
@@ -104,4 +118,44 @@ func copyIfExists(src, dst string) error {
 func commandExists(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
+}
+
+func addToClaudeConfig(worktreePath string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(home, ".claude.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	var config map[string]interface{}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return err
+	}
+
+	projects, ok := config["projects"].(map[string]interface{})
+	if !ok {
+		projects = make(map[string]interface{})
+		config["projects"] = projects
+	}
+
+	if _, exists := projects[worktreePath]; !exists {
+		projects[worktreePath] = map[string]interface{}{
+			"hasTrustDialogAccepted": true,
+		}
+	}
+
+	newData, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(configPath, newData, 0644)
 }
