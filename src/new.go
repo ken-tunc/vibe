@@ -17,7 +17,7 @@ var filesToCopy = []string{
 	".claude/settings.local.json",
 }
 
-func NewTask(taskName string) error {
+func NewTask(taskName, sourceBranch string) error {
 	sanitized := sanitizeTaskName(taskName)
 	if sanitized == "" {
 		return fmt.Errorf("invalid task name: %q", taskName)
@@ -37,7 +37,7 @@ func NewTask(taskName string) error {
 	worktreePath := filepath.Join(home, workspacesDir, repoName, sanitized)
 	branchName := fmt.Sprintf("feature/%s", sanitized)
 
-	if err := createWorktree(gitRoot, worktreePath, branchName); err != nil {
+	if err := createWorktree(gitRoot, worktreePath, branchName, sourceBranch); err != nil {
 		return fmt.Errorf("failed to create worktree: %w", err)
 	}
 
@@ -100,8 +100,12 @@ func sanitizeTaskName(name string) string {
 	return name
 }
 
-func createWorktree(gitRoot, worktreePath, branchName string) error {
-	cmd := exec.Command("git", "worktree", "add", worktreePath, "-b", branchName)
+func createWorktree(gitRoot, worktreePath, branchName, sourceBranch string) error {
+	args := []string{"worktree", "add", worktreePath, "-b", branchName}
+	if sourceBranch != "" {
+		args = append(args, sourceBranch)
+	}
+	cmd := exec.Command("git", args...)
 	cmd.Dir = gitRoot
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
