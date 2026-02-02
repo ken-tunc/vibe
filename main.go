@@ -14,7 +14,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, "  vibe <command> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Commands:\n")
-		fmt.Fprintf(os.Stderr, "  new <task>    Create a new worktree for a task\n")
+		fmt.Fprintf(os.Stderr, "  new [-b <branch>] <task>    Create a new worktree for a task\n")
 		fmt.Fprintf(os.Stderr, "  statusline    Output statusline info from JSON input\n")
 		fmt.Fprintf(os.Stderr, "  version       Show version information\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
@@ -26,11 +26,18 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "new":
-			if len(os.Args) < 3 {
-				fmt.Fprintln(os.Stderr, "Usage: vibe new <task-name>")
+			newCmd := flag.NewFlagSet("new", flag.ExitOnError)
+			baseBranch := newCmd.String("b", "", "source branch to create worktree from")
+			newCmd.Usage = func() {
+				fmt.Fprintln(os.Stderr, "Usage: vibe new [-b <branch>] <task-name>")
+				newCmd.PrintDefaults()
+			}
+			newCmd.Parse(os.Args[2:])
+			if newCmd.NArg() < 1 {
+				newCmd.Usage()
 				os.Exit(1)
 			}
-			if err := vibe.NewTask(os.Args[2]); err != nil {
+			if err := vibe.NewTask(newCmd.Arg(0), *baseBranch); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
