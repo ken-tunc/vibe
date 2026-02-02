@@ -162,3 +162,105 @@ func addToClaudeConfig(worktreePath string) error {
 
 	return os.WriteFile(configPath, newData, 0644)
 }
+
+func NewTaskMulti(taskName string) error {
+	sanitized := sanitizeTaskName(taskName)
+	if sanitized == "" {
+		return fmt.Errorf("invalid task name: %q", taskName)
+	}
+
+	if !commandExists("ghq") {
+		return fmt.Errorf("ghq is not installed")
+	}
+	if !commandExists("fzf") {
+		return fmt.Errorf("fzf is not installed")
+	}
+
+	repos, err := selectReposWithFzf()
+	if err != nil {
+		return err
+	}
+	if len(repos) == 0 {
+		return fmt.Errorf("no repositories selected")
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	var worktreePaths []string
+	for _, gitRoot := range repos {
+		repoName := getRepoName(gitRoot)
+		worktreePath := filepath.Join(home, workspacesDir, repoName, sanitized)
+		branchName := fmt.Sprintf("feature/%s", sanitized)
+
+		if err := createWorktree(gitRoot, worktreePath, branchName); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to create worktree for %s: %v\n", repoName, err)
+			continue
+		}
+
+		for _, file := range filesToCopy {
+			copyIfExists(filepath.Join(gitRoot, file), filepath.Join(worktreePath, file))
+		}
+
+		if commandExists("direnv") {
+			cmd := exec.Command("direnv", "allow")
+			cmd.Dir = worktreePath
+			cmd.Run()
+		}
+
+		if err := addToClaudeConfig(worktreePath); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to update claude config for %s: %v\n", repoName, err)
+		}
+
+		worktreePaths = append(worktreePaths, worktreePath)
+		fmt.Printf("Created worktree: %s\n", worktreePath)
+	}
+
+	if len(worktreePaths) == 0 {
+		return fmt.Errorf("no worktrees were created")
+	}
+
+	return nil
+}
+
+func selectReposWithFzf() ([]string, error) {
+	// Get repository list from ghq
+	ghqOut, err := exec.Command("ghq", "list", "--full-path").Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run ghq: %w", err)
+	}
+
+	// Run fzf with multi-select
+	fzfCmd := exec.Command("fzf", "--multi", "--prompt", "Select repositories (TAB to select): ")
+	fzfCmd.Stdin = strings.NewReader(string(ghqOut))
+	fzfCmd.Stderr = os.Stderr
+
+	// fzf needs access to tty for interactive selection
+	tty, err := os.OpenFile("/dev/tty", os.O_RDONLY, 0)
+	if err == nil {
+		fzfCmd.ExtraFiles = []*os.File{tty}
+		defer tty.Close()
+	}
+
+	out, err := fzfCmd.Output()
+	if err != nil {
+		// fzf returns exit code 130 when user presses Ctrl-C, exit code 1 when no selection
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == 130 || exitErr.ExitCode() == 1 {
+				return nil, nil
+			}
+		}
+		return nil, fmt.Errorf("fzf error: %w", err)
+	}
+
+	var selected []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			selected = append(selected, line)
+		}
+	}
+
+	return selected, nil
+}

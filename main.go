@@ -26,11 +26,28 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "new":
-			if len(os.Args) < 3 {
-				fmt.Fprintln(os.Stderr, "Usage: vibe new <task-name>")
+			newCmd := flag.NewFlagSet("new", flag.ExitOnError)
+			multi := newCmd.Bool("multi", false, "Select multiple repositories via fzf (requires ghq and fzf)")
+			newCmd.Usage = func() {
+				fmt.Fprintln(os.Stderr, "Usage: vibe new [options] <task-name>")
+				fmt.Fprintln(os.Stderr, "\nOptions:")
+				newCmd.PrintDefaults()
+			}
+			newCmd.Parse(os.Args[2:])
+
+			args := newCmd.Args()
+			if len(args) < 1 {
+				newCmd.Usage()
 				os.Exit(1)
 			}
-			if err := vibe.NewTask(os.Args[2]); err != nil {
+
+			var err error
+			if *multi {
+				err = vibe.NewTaskMulti(args[0])
+			} else {
+				err = vibe.NewTask(args[0])
+			}
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
