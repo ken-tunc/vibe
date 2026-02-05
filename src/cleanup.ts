@@ -1,7 +1,7 @@
 import { $ } from "bun";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { getGitRoot, getRepoName, getWorkspacesDir } from "./git";
+import { getGitRoot, getRepoName, getWorkspacesDir, getBranch } from "./git";
 
 async function getTaskList(workspacesDir: string): Promise<string[]> {
   try {
@@ -48,10 +48,16 @@ async function selectTasksWithFzf(tasks: string[]): Promise<string[]> {
   return output.split("\n").filter((line) => line.length > 0);
 }
 
-async function confirmDeletion(tasks: string[]): Promise<boolean> {
+interface TaskInfo {
+  name: string;
+  path: string;
+  branch: string;
+}
+
+async function confirmDeletion(tasks: TaskInfo[]): Promise<boolean> {
   console.log("The following tasks will be deleted:");
   for (const task of tasks) {
-    console.log(`  - ${task} (branch: feature/${task})`);
+    console.log(`  - ${task.name} (branch: ${task.branch})`);
   }
   process.stdout.write("Are you sure? [y/N] ");
 
@@ -84,11 +90,19 @@ export async function cleanupCommand(): Promise<void> {
     return;
   }
 
-  const selectedTasks = await selectTasksWithFzf(availableTasks);
-  if (selectedTasks.length === 0) {
+  const selectedTaskNames = await selectTasksWithFzf(availableTasks);
+  if (selectedTaskNames.length === 0) {
     console.log("No tasks selected");
     return;
   }
+
+  const selectedTasks: TaskInfo[] = await Promise.all(
+    selectedTaskNames.map(async (name) => {
+      const path = join(workspacesDir, name);
+      const branch = await getBranch(path);
+      return { name, path, branch };
+    })
+  );
 
   const confirmed = await confirmDeletion(selectedTasks);
   if (!confirmed) {
@@ -97,13 +111,12 @@ export async function cleanupCommand(): Promise<void> {
   }
 
   for (const task of selectedTasks) {
-    const worktreePath = join(workspacesDir, task);
-    const branchName = `feature/${task}`;
+    console.log(`Removing ${task.name}...`);
 
-    console.log(`Removing ${task}...`);
-
-    await $`git -C ${gitRoot} worktree remove --force ${worktreePath}`.nothrow().quiet();
-    await $`git -C ${gitRoot} branch -D ${branchName}`.nothrow().quiet();
+    await $`git -C ${gitRoot} worktree remove --force ${task.path}`.nothrow().quiet();
+    if (task.branch) {
+      await $`git -C ${gitRoot} branch -D ${task.branch}`.nothrow().quiet();
+    }
   }
 
   await $`git -C ${gitRoot} worktree prune`.nothrow().quiet();
