@@ -1,8 +1,8 @@
 ---
 name: commit
-description: Format, lint, test changed files, then commit with English message
+description: Type check, test, then commit with English message
 disable-model-invocation: true
-allowed-tools: Bash(go:*), Bash(git:*), Bash(gofmt:*)
+allowed-tools: Bash(bun:*), Bash(git:*)
 ---
 
 # Commit Workflow
@@ -15,18 +15,15 @@ Before committing changes, run the following checks in order. If any step fails,
    - Run `git status` to see what files have been modified
    - If no changes, report and stop
 
-2. **Format code**
-   - Run `gofmt -w .` to auto-format all Go files
-
-3. **Lint**
-   - Run `go vet ./...`
+2. **Type check**
+   - Run `bun run --bun tsc --noEmit`
    - If it fails, report the errors and stop
 
-4. **Test**
-   - Run `go test ./...`
+3. **Test**
+   - Run `bun test`
    - If tests fail, report the failures and stop
 
-5. **Commit**
+4. **Commit**
    - Stage all changes with `git add`
    - Analyze the diff to write a concise English commit message
    - Commit with `git commit -m "message"`
