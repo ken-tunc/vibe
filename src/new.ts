@@ -30,7 +30,7 @@ export async function newCommand(
   task: string,
   sourceBranch?: string,
   multi?: boolean,
-  prefix: string = "feature/"
+  prefix: string
 ): Promise<void> {
   const taskName = sanitizeTaskName(task);
   if (!taskName) {
