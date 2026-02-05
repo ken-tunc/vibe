@@ -1,8 +1,7 @@
 import { $ } from "bun";
 import { readdir } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
-import { getGitRoot, getRepoName } from "./git";
+import { getGitRoot, getRepoName, getWorkspacesDir } from "./git";
 
 async function getTaskList(workspacesDir: string): Promise<string[]> {
   try {
@@ -66,7 +65,7 @@ async function confirmDeletion(tasks: string[]): Promise<boolean> {
 export async function cleanupCommand(): Promise<void> {
   const gitRoot = await getGitRoot();
   const repoName = await getRepoName(gitRoot);
-  const workspacesDir = join(homedir(), ".vibe-workspaces", repoName);
+  const workspacesDir = getWorkspacesDir(repoName);
 
   const allTasks = await getTaskList(workspacesDir);
   if (allTasks.length === 0) {
