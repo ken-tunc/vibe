@@ -1,3 +1,4 @@
+import { cleanupCommand } from "./cleanup";
 import { newCommand } from "./new";
 import { statusline } from "./statusline";
 
@@ -6,7 +7,8 @@ function printUsage(): void {
 
 Usage:
   vibe new [-b <branch>] [-m|--multi] [-p|--prefix <prefix>] <task>    Create a new worktree for a task
-  vibe statusline                                                      Output status line from JSON input `);
+  vibe cleanup                                                         Delete completed tasks (worktrees)
+  vibe statusline                                                      Output status line from JSON input `)
 }
 
 async function main(): Promise<void> {
@@ -22,6 +24,10 @@ async function main(): Promise<void> {
   switch (command) {
     case "statusline":
       await statusline();
+      break;
+
+    case "cleanup":
+      await cleanupCommand();
       break;
 
     case "new": {
