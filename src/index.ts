@@ -5,7 +5,7 @@ function printUsage(): void {
   console.log(`vibe
 
 Usage:
-  vibe new [-b <branch>] [--multi] <task>    Create a new worktree for a task
+  vibe new [-b <branch>] [-m|--multi] <task>    Create a new worktree for a task
   vibe statusline                            Output status line from JSON input `);
 }
 
@@ -38,7 +38,7 @@ async function main(): Promise<void> {
           }
           sourceBranch = args[taskIndex + 1];
           taskIndex += 2;
-        } else if (args[taskIndex] === "--multi") {
+        } else if (args[taskIndex] === "-m" || args[taskIndex] === "--multi") {
           multi = true;
           taskIndex += 1;
         } else {
