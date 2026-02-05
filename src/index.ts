@@ -6,7 +6,7 @@ function printUsage(): void {
 
 Usage:
   vibe new [-b <branch>] <task>    Create a new worktree for a task
-  vibe statusline                  Output status line from JSON input`);
+  vibe statusline                  Output status line from JSON input `);
 }
 
 async function main(): Promise<void> {

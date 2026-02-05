@@ -60,7 +60,13 @@ async function runDirenvAllow(path: string): Promise<void> {
 }
 
 async function runClaude(worktreePath: string): Promise<void> {
-  await $`claude`.cwd(worktreePath).nothrow().quiet();
+  const proc = Bun.spawn(["claude"], {
+    cwd: worktreePath,
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  await proc.exited;
 }
 
 async function addToClaudeConfig(home: string, worktreePath: string): Promise<void> {
@@ -68,13 +74,14 @@ async function addToClaudeConfig(home: string, worktreePath: string): Promise<vo
   const configFile = Bun.file(configPath);
 
   try {
-    const config: { workspaces?: string[] } = (await configFile.exists())
-      ? await configFile.json()
-      : {};
+    if (!(await configFile.exists())) return;
 
-    config.workspaces ??= [];
-    if (!config.workspaces.includes(worktreePath)) {
-      config.workspaces.push(worktreePath);
+    const config = await configFile.json() as Record<string, unknown>;
+    const projects = (config.projects as Record<string, unknown>) ?? {};
+
+    if (!(worktreePath in projects)) {
+      projects[worktreePath] = { hasTrustDialogAccepted: true };
+      config.projects = projects;
       await Bun.write(configPath, JSON.stringify(config, null, 2) + "\n");
     }
   } catch {
