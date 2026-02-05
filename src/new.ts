@@ -1,7 +1,7 @@
 import { $ } from "bun";
 import { homedir } from "os";
 import { join } from "path";
-import { getGitRoot, getRepoName, createWorktree } from "./git";
+import { getGitRoot, getRepoName, createWorktree, getWorkspacesDir } from "./git";
 import {
   getGhqRoot,
   listGhqRepos,
@@ -10,7 +10,6 @@ import {
   updateRepos,
 } from "./ghq";
 
-const WORKSPACES_DIR = ".vibe-workspaces";
 const FILES_TO_COPY = [".envrc", ".claude/settings.local.json"];
 
 interface RepoConfig {
@@ -40,8 +39,7 @@ export async function newCommand(
 
   const gitRoot = await getGitRoot();
   const repoName = await getRepoName(gitRoot);
-  const home = homedir();
-  const worktreePath = join(home, WORKSPACES_DIR, repoName, taskName);
+  const worktreePath = join(getWorkspacesDir(repoName), taskName);
   const branchName = `${prefix}${taskName}`;
 
   let additionalRepos: RepoConfig[] = [];
@@ -61,7 +59,7 @@ export async function newCommand(
   }
 
   await runDirenvAllow(worktreePath);
-  await addToClaudeConfig(home, worktreePath);
+  await addToClaudeConfig(homedir(), worktreePath);
 
   const additionalDirs = additionalRepos.map((r) => r.worktreePath);
   await runClaude(worktreePath, additionalDirs);
@@ -93,7 +91,6 @@ async function selectAndSetupAdditionalRepos(
   await updateRepos(selectedRepos);
 
   const repoConfigs: RepoConfig[] = [];
-  const home = homedir();
 
   for (const repo of selectedRepos) {
     const repoPath = join(ghqRoot, repo);
@@ -107,7 +104,7 @@ async function selectAndSetupAdditionalRepos(
       continue;
     }
 
-    const worktreePath = join(home, WORKSPACES_DIR, repoName, taskName);
+    const worktreePath = join(getWorkspacesDir(repoName), taskName);
     const branchName = `${prefix}${taskName}`;
 
     console.log(`Creating worktree for ${repoName} at ${worktreePath}...`);
@@ -118,7 +115,7 @@ async function selectAndSetupAdditionalRepos(
     }
 
     await runDirenvAllow(worktreePath);
-    await addToClaudeConfig(home, worktreePath);
+    await addToClaudeConfig(homedir(), worktreePath);
 
     repoConfigs.push({
       path: repoPath,
