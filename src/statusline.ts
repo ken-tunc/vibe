@@ -1,5 +1,5 @@
-import { $ } from "bun";
 import { homedir } from "os";
+import { getBranch } from "./git";
 
 interface StatusInput {
   model?: {
@@ -28,7 +28,7 @@ export async function statusline(): Promise<void> {
   }
 
   const home = homedir();
-  const branch = await getGitBranch(data.workspace?.current_dir);
+  const branch = await getBranch(data.workspace?.current_dir);
   const output = formatStatusOutput(
     data.model?.display_name,
     replaceTilde(data.workspace?.current_dir, home),
@@ -60,10 +60,4 @@ export function formatStatusOutput(
     parts.push(`💭 ${Math.round(usedPercentage)}%`);
   }
   return parts.join(" | ");
-}
-
-async function getGitBranch(dir: string | undefined): Promise<string> {
-  if (!dir) return "";
-  const result = await $`git -C ${dir} branch --show-current`.nothrow().text();
-  return result.trim();
 }

@@ -1,6 +1,7 @@
 import { $ } from "bun";
 import { homedir } from "os";
 import { join } from "path";
+import { getGitRoot, getRepoName, createWorktree } from "./git";
 
 const WORKSPACES_DIR = ".vibe-workspaces";
 const FILES_TO_COPY = [".envrc", ".claude/settings.local.json"];
@@ -41,43 +42,6 @@ export async function newCommand(
 
   console.log(`Worktree created at ${worktreePath}`);
   console.log(`Branch: ${branchName}`);
-}
-
-async function getGitRoot(): Promise<string> {
-  try {
-    return (await $`git rev-parse --show-toplevel`.text()).trim();
-  } catch {
-    console.error("Not a git repository");
-    process.exit(1);
-  }
-}
-
-async function getRepoName(gitRoot: string): Promise<string> {
-  try {
-    const remoteUrl = (
-      await $`git -C ${gitRoot} remote get-url origin`.nothrow().text()
-    ).trim();
-    const match = remoteUrl.match(/\/([^/]+?)(\.git)?$/);
-    if (match?.[1]) return match[1];
-  } catch {
-    // Fall through to fallback
-  }
-  return gitRoot.split("/").pop() || "unknown";
-}
-
-async function createWorktree(
-  gitRoot: string,
-  worktreePath: string,
-  branchName: string,
-  sourceBranch?: string
-): Promise<void> {
-  const base = sourceBranch || "main";
-  try {
-    await $`git -C ${gitRoot} worktree add -b ${branchName} ${worktreePath} ${base}`;
-  } catch {
-    console.error("Failed to create worktree");
-    process.exit(1);
-  }
 }
 
 async function copyIfExists(src: string, dst: string): Promise<void> {
