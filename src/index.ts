@@ -5,8 +5,8 @@ function printUsage(): void {
   console.log(`vibe
 
 Usage:
-  vibe new [-b <branch>] <task>    Create a new worktree for a task
-  vibe statusline                  Output status line from JSON input `);
+  vibe new [-b <branch>] [--multi] <task>    Create a new worktree for a task
+  vibe statusline                            Output status line from JSON input `);
 }
 
 async function main(): Promise<void> {
@@ -26,16 +26,24 @@ async function main(): Promise<void> {
 
     case "new": {
       let sourceBranch: string | undefined;
+      let multi = false;
       let taskIndex = 1;
 
-      // Parse -b option
-      if (args[1] === "-b") {
-        if (args.length < 4) {
-          console.error("Missing branch name after -b");
-          process.exit(1);
+      // Parse options
+      while (taskIndex < args.length) {
+        if (args[taskIndex] === "-b") {
+          if (taskIndex + 1 >= args.length) {
+            console.error("Missing branch name after -b");
+            process.exit(1);
+          }
+          sourceBranch = args[taskIndex + 1];
+          taskIndex += 2;
+        } else if (args[taskIndex] === "--multi") {
+          multi = true;
+          taskIndex += 1;
+        } else {
+          break;
         }
-        sourceBranch = args[2];
-        taskIndex = 3;
       }
 
       const task = args[taskIndex];
@@ -44,7 +52,7 @@ async function main(): Promise<void> {
         printUsage();
         process.exit(1);
       }
-      await newCommand(task, sourceBranch);
+      await newCommand(task, sourceBranch, multi);
       break;
     }
 

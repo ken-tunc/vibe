@@ -2,9 +2,22 @@ import { $ } from "bun";
 import { homedir } from "os";
 import { join } from "path";
 import { getGitRoot, getRepoName, createWorktree } from "./git";
+import {
+  getGhqRoot,
+  listGhqRepos,
+  selectReposWithFzf,
+  selectBranchWithFzf,
+  updateRepos,
+} from "./ghq";
 
 const WORKSPACES_DIR = ".vibe-workspaces";
 const FILES_TO_COPY = [".envrc", ".claude/settings.local.json"];
+
+interface RepoConfig {
+  path: string;
+  branch: string;
+  worktreePath: string;
+}
 
 export function sanitizeTaskName(task: string): string {
   return task
@@ -15,7 +28,8 @@ export function sanitizeTaskName(task: string): string {
 
 export async function newCommand(
   task: string,
-  sourceBranch?: string
+  sourceBranch?: string,
+  multi?: boolean
 ): Promise<void> {
   const taskName = sanitizeTaskName(task);
   if (!taskName) {
@@ -29,6 +43,15 @@ export async function newCommand(
   const worktreePath = join(home, WORKSPACES_DIR, repoName, taskName);
   const branchName = `feature/${taskName}`;
 
+  let additionalRepos: RepoConfig[] = [];
+
+  if (multi) {
+    additionalRepos = await selectAndSetupAdditionalRepos(taskName, repoName);
+    if (additionalRepos.length === 0) {
+      console.log("No additional repositories selected.");
+    }
+  }
+
   console.log(`Creating worktree at ${worktreePath}...`);
   await createWorktree(gitRoot, worktreePath, branchName, sourceBranch);
 
@@ -38,10 +61,71 @@ export async function newCommand(
 
   await runDirenvAllow(worktreePath);
   await addToClaudeConfig(home, worktreePath);
-  await runClaude(worktreePath);
+
+  const additionalDirs = additionalRepos.map((r) => r.worktreePath);
+  await runClaude(worktreePath, additionalDirs);
 
   console.log(`Worktree created at ${worktreePath}`);
   console.log(`Branch: ${branchName}`);
+  if (additionalRepos.length > 0) {
+    console.log("Additional repositories:");
+    for (const repo of additionalRepos) {
+      console.log(`  - ${repo.worktreePath} (branch: feature/${taskName})`);
+    }
+  }
+}
+
+async function selectAndSetupAdditionalRepos(
+  taskName: string,
+  currentRepoName: string
+): Promise<RepoConfig[]> {
+  const ghqRoot = await getGhqRoot();
+  const allRepos = await listGhqRepos();
+  const selectedRepos = await selectReposWithFzf(allRepos, currentRepoName);
+
+  if (selectedRepos.length === 0) {
+    return [];
+  }
+
+  // Update selected repos
+  await updateRepos(selectedRepos);
+
+  const repoConfigs: RepoConfig[] = [];
+  const home = homedir();
+
+  for (const repo of selectedRepos) {
+    const repoPath = join(ghqRoot, repo);
+    const repoName = repo.split("/").pop() || repo;
+
+    console.log(`\nConfiguring ${repoName}...`);
+    const branch = await selectBranchWithFzf(repoPath);
+
+    if (!branch) {
+      console.log(`Skipping ${repoName} (no branch selected)`);
+      continue;
+    }
+
+    const worktreePath = join(home, WORKSPACES_DIR, repoName, taskName);
+    const branchName = `feature/${taskName}`;
+
+    console.log(`Creating worktree for ${repoName} at ${worktreePath}...`);
+    await createWorktree(repoPath, worktreePath, branchName, branch);
+
+    for (const file of FILES_TO_COPY) {
+      await copyIfExists(join(repoPath, file), join(worktreePath, file));
+    }
+
+    await runDirenvAllow(worktreePath);
+    await addToClaudeConfig(home, worktreePath);
+
+    repoConfigs.push({
+      path: repoPath,
+      branch,
+      worktreePath,
+    });
+  }
+
+  return repoConfigs;
 }
 
 async function copyIfExists(src: string, dst: string): Promise<void> {
@@ -59,12 +143,30 @@ async function runDirenvAllow(path: string): Promise<void> {
   await $`direnv allow ${path}`.nothrow().quiet();
 }
 
-async function runClaude(worktreePath: string): Promise<void> {
-  const proc = Bun.spawn(["claude"], {
+async function runClaude(
+  worktreePath: string,
+  additionalDirs: string[] = []
+): Promise<void> {
+  const args = ["claude"];
+
+  for (const dir of additionalDirs) {
+    args.push("--add-dir", dir);
+  }
+
+  const env: Record<string, string> = { ...process.env } as Record<
+    string,
+    string
+  >;
+  if (additionalDirs.length > 0) {
+    env.CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD = "1";
+  }
+
+  const proc = Bun.spawn(args, {
     cwd: worktreePath,
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
+    env,
   });
   await proc.exited;
 }
