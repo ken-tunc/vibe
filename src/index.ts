@@ -47,7 +47,7 @@ async function main(): Promise<void> {
             console.error("Missing prefix after -p/--prefix");
             process.exit(1);
           }
-          prefix = args[taskIndex + 1];
+          prefix = args[taskIndex + 1]!;
           taskIndex += 2;
         } else {
           break;
