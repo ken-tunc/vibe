@@ -29,7 +29,8 @@ export function sanitizeTaskName(task: string): string {
 export async function newCommand(
   task: string,
   sourceBranch?: string,
-  multi?: boolean
+  multi?: boolean,
+  prefix: string = "feature/"
 ): Promise<void> {
   const taskName = sanitizeTaskName(task);
   if (!taskName) {
@@ -41,12 +42,12 @@ export async function newCommand(
   const repoName = await getRepoName(gitRoot);
   const home = homedir();
   const worktreePath = join(home, WORKSPACES_DIR, repoName, taskName);
-  const branchName = `feature/${taskName}`;
+  const branchName = `${prefix}${taskName}`;
 
   let additionalRepos: RepoConfig[] = [];
 
   if (multi) {
-    additionalRepos = await selectAndSetupAdditionalRepos(taskName, repoName);
+    additionalRepos = await selectAndSetupAdditionalRepos(taskName, repoName, prefix);
     if (additionalRepos.length === 0) {
       console.log("No additional repositories selected.");
     }
@@ -70,14 +71,15 @@ export async function newCommand(
   if (additionalRepos.length > 0) {
     console.log("Additional repositories:");
     for (const repo of additionalRepos) {
-      console.log(`  - ${repo.worktreePath} (branch: feature/${taskName})`);
+      console.log(`  - ${repo.worktreePath} (branch: ${branchName})`);
     }
   }
 }
 
 async function selectAndSetupAdditionalRepos(
   taskName: string,
-  currentRepoName: string
+  currentRepoName: string,
+  prefix: string
 ): Promise<RepoConfig[]> {
   const ghqRoot = await getGhqRoot();
   const allRepos = await listGhqRepos();
@@ -106,7 +108,7 @@ async function selectAndSetupAdditionalRepos(
     }
 
     const worktreePath = join(home, WORKSPACES_DIR, repoName, taskName);
-    const branchName = `feature/${taskName}`;
+    const branchName = `${prefix}${taskName}`;
 
     console.log(`Creating worktree for ${repoName} at ${worktreePath}...`);
     await createWorktree(repoPath, worktreePath, branchName, branch);

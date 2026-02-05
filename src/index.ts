@@ -5,8 +5,8 @@ function printUsage(): void {
   console.log(`vibe
 
 Usage:
-  vibe new [-b <branch>] [-m|--multi] <task>    Create a new worktree for a task
-  vibe statusline                            Output status line from JSON input `);
+  vibe new [-b <branch>] [-m|--multi] [-p|--prefix <prefix>] <task>    Create a new worktree for a task
+  vibe statusline                                                      Output status line from JSON input `);
 }
 
 async function main(): Promise<void> {
@@ -27,6 +27,7 @@ async function main(): Promise<void> {
     case "new": {
       let sourceBranch: string | undefined;
       let multi = false;
+      let prefix = "feature/";
       let taskIndex = 1;
 
       // Parse options
@@ -41,6 +42,13 @@ async function main(): Promise<void> {
         } else if (args[taskIndex] === "-m" || args[taskIndex] === "--multi") {
           multi = true;
           taskIndex += 1;
+        } else if (args[taskIndex] === "-p" || args[taskIndex] === "--prefix") {
+          if (taskIndex + 1 >= args.length) {
+            console.error("Missing prefix after -p/--prefix");
+            process.exit(1);
+          }
+          prefix = args[taskIndex + 1];
+          taskIndex += 2;
         } else {
           break;
         }
@@ -52,7 +60,7 @@ async function main(): Promise<void> {
         printUsage();
         process.exit(1);
       }
-      await newCommand(task, sourceBranch, multi);
+      await newCommand(task, sourceBranch, multi, prefix);
       break;
     }
 
