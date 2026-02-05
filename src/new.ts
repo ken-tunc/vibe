@@ -28,9 +28,9 @@ export function sanitizeTaskName(task: string): string {
 
 export async function newCommand(
   task: string,
+  prefix: string,
   sourceBranch?: string,
-  multi?: boolean,
-  prefix: string
+  multi?: boolean
 ): Promise<void> {
   const taskName = sanitizeTaskName(task);
   if (!taskName) {

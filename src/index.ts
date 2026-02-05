@@ -60,7 +60,7 @@ async function main(): Promise<void> {
         printUsage();
         process.exit(1);
       }
-      await newCommand(task, sourceBranch, multi, prefix);
+      await newCommand(task, prefix, sourceBranch, multi);
       break;
     }
 
