@@ -6,11 +6,8 @@ export async function getGhqRoot(): Promise<string> {
 }
 
 export async function listGhqRepos(): Promise<string[]> {
-  const result = await $`ghq list`.nothrow().text();
-  return result
-    .trim()
-    .split("\n")
-    .filter((line) => line.length > 0);
+  const lines = await Array.fromAsync($`ghq list`.nothrow().lines());
+  return lines.filter((line) => line.length > 0);
 }
 
 export async function selectReposWithFzf(
@@ -44,31 +41,21 @@ export async function selectReposWithFzf(
   }
 
   const output = await new Response(proc.stdout).text();
-  return output
-    .trim()
-    .split("\n")
-    .filter((line) => line.length > 0);
+  return output.split("\n").filter((line) => line.length > 0);
 }
 
 export async function selectBranchWithFzf(
   repoPath: string
 ): Promise<string | undefined> {
-  const branches =
-    await $`git -C ${repoPath} branch -a --format='%(refname:short)'`
-      .nothrow()
-      .text();
-
-  const branchList = branches
-    .trim()
-    .split("\n")
-    .filter((b) => b.length > 0)
-    .map((b) => b.replace(/^origin\//, ""));
-
-  const uniqueBranches = [...new Set(branchList)].filter(
-    (b) => !b.startsWith("HEAD")
+  const branches = await Array.fromAsync(
+    $`git -C ${repoPath} branch -a --format='%(refname:short)'`.nothrow().lines()
   );
 
-  if (uniqueBranches.length === 0) {
+  const branchList = branches.filter(
+    (b) => b.length > 0 && !b.includes("HEAD")
+  );
+
+  if (branchList.length === 0) {
     return "main";
   }
 
@@ -81,7 +68,7 @@ export async function selectBranchWithFzf(
     }
   );
 
-  proc.stdin.write(uniqueBranches.join("\n"));
+  proc.stdin.write(branchList.join("\n"));
   proc.stdin.end();
 
   const exitCode = await proc.exited;
@@ -90,13 +77,16 @@ export async function selectBranchWithFzf(
   }
 
   const output = await new Response(proc.stdout).text();
-  return output.trim() || undefined;
+  const selected = output.trim();
+  if (!selected) return undefined;
+
+  // Remove origin/ prefix if present for worktree creation
+  return selected.replace(/^origin\//, "");
 }
 
 export async function updateRepos(repos: string[]): Promise<void> {
   if (repos.length === 0) return;
 
   console.log("Updating repositories...");
-  const repoArgs = repos.map((repo) => `ghq get --update ${repo}`);
-  await $`parallel ::: ${repoArgs}`.nothrow().quiet();
+  await Promise.all(repos.map((repo) => $`ghq get --update ${repo}`.nothrow().quiet()));
 }
