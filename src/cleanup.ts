@@ -1,21 +1,13 @@
 import { $ } from "bun";
-import { readdir, stat } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { getGitRoot, getRepoName } from "./git";
 
 async function getTaskList(workspacesDir: string): Promise<string[]> {
   try {
-    const entries = await readdir(workspacesDir);
-    const tasks: string[] = [];
-    for (const entry of entries) {
-      const entryPath = join(workspacesDir, entry);
-      const entryStat = await stat(entryPath);
-      if (entryStat.isDirectory()) {
-        tasks.push(entry);
-      }
-    }
-    return tasks;
+    const entries = await readdir(workspacesDir, { withFileTypes: true });
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name);
   } catch {
     return [];
   }
