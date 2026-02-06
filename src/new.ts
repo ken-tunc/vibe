@@ -12,7 +12,7 @@ import {
 
 const FILES_TO_COPY = [".envrc", ".claude/settings.local.json"];
 
-interface RepoConfig {
+export interface RepoConfig {
   path: string;
   branch: string;
   worktreePath: string;
@@ -160,9 +160,7 @@ async function runClaude(
   >;
   if (additionalRepos.length > 0) {
     env.CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD = "1";
-    env.VIBE_ADDITIONAL_REPOS = JSON.stringify(
-      additionalRepos.map((r) => ({ path: r.worktreePath, branch: r.branch }))
-    );
+    env.VIBE_ADDITIONAL_REPOS = JSON.stringify(additionalRepos);
   }
   if (targetBranch) {
     env.VIBE_BASE_BRANCH = targetBranch;

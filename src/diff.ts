@@ -1,9 +1,5 @@
 import { $ } from "bun";
-
-interface AdditionalRepo {
-  path: string;
-  branch: string;
-}
+import type { RepoConfig } from "./new";
 
 export async function diffCommand(): Promise<void> {
   const targetBranch = process.env.VIBE_BASE_BRANCH;
@@ -23,7 +19,7 @@ export async function diffCommand(): Promise<void> {
 
   const additionalDiffs: string[] = [];
   for (const repo of additionalRepos) {
-    const diff = await $`git -C ${repo.path} diff ${repo.branch}...HEAD`.text();
+    const diff = await $`git -C ${repo.worktreePath} diff ${repo.branch}...HEAD`.text();
     additionalDiffs.push(diff);
   }
 
@@ -31,11 +27,11 @@ export async function diffCommand(): Promise<void> {
   await $`echo ${combinedDiff} | npx -y difit --include-untracked`;
 }
 
-function parseAdditionalRepos(): AdditionalRepo[] {
+function parseAdditionalRepos(): RepoConfig[] {
   const raw = process.env.VIBE_ADDITIONAL_REPOS;
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as AdditionalRepo[];
+    return JSON.parse(raw) as RepoConfig[];
   } catch {
     return [];
   }
