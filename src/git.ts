@@ -54,7 +54,7 @@ export async function getDefaultBranch(gitRoot: string): Promise<string> {
   // refs/remotes/origin/main -> main
   if (ref) {
     const parts = ref.split("/");
-    return parts[parts.length - 1];
+    return parts[parts.length - 1] ?? "main";
   }
   return "main";
 }
