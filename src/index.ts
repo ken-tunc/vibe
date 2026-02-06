@@ -1,4 +1,5 @@
 import { cleanupCommand } from "./cleanup";
+import { diffCommand } from "./diff";
 import { newCommand } from "./new";
 import { statusline } from "./statusline";
 
@@ -7,6 +8,7 @@ function printUsage(): void {
 
 Usage:
   vibe new [-b <branch>] [-m|--multi] [-p|--prefix <prefix>] <task>    Create a new worktree for a task
+  vibe diff                                                            Show diff against base branch using difit
   vibe cleanup                                                         Delete completed tasks (worktrees)
   vibe statusline                                                      Output status line from JSON input `)
 }
@@ -24,6 +26,10 @@ async function main(): Promise<void> {
   switch (command) {
     case "statusline":
       await statusline();
+      break;
+
+    case "diff":
+      await diffCommand();
       break;
 
     case "cleanup":

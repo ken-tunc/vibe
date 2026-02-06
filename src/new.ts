@@ -1,7 +1,7 @@
 import { $ } from "bun";
 import { homedir } from "os";
 import { join } from "path";
-import { getGitRoot, getRepoName, createWorktree, getWorkspacesDir } from "./git";
+import { getGitRoot, getRepoName, createWorktree, getDefaultBranch, getWorkspacesDir } from "./git";
 import {
   getGhqRoot,
   listGhqRepos,
@@ -12,7 +12,7 @@ import {
 
 const FILES_TO_COPY = [".envrc", ".claude/settings.local.json"];
 
-interface RepoConfig {
+export interface RepoConfig {
   path: string;
   branch: string;
   worktreePath: string;
@@ -51,8 +51,10 @@ export async function newCommand(
     }
   }
 
+  const baseBranch = sourceBranch || await getDefaultBranch(gitRoot);
+
   console.log(`Creating worktree at ${worktreePath}...`);
-  await createWorktree(gitRoot, worktreePath, branchName, sourceBranch);
+  await createWorktree(gitRoot, worktreePath, branchName, baseBranch);
 
   for (const file of FILES_TO_COPY) {
     await copyIfExists(join(gitRoot, file), join(worktreePath, file));
@@ -61,8 +63,7 @@ export async function newCommand(
   await runDirenvAllow(worktreePath);
   await addToClaudeConfig(homedir(), worktreePath);
 
-  const additionalDirs = additionalRepos.map((r) => r.worktreePath);
-  await runClaude(worktreePath, additionalDirs);
+  await runClaude(worktreePath, additionalRepos, baseBranch);
 
   console.log(`Worktree created at ${worktreePath}`);
   console.log(`Branch: ${branchName}`);
@@ -144,20 +145,25 @@ async function runDirenvAllow(path: string): Promise<void> {
 
 async function runClaude(
   worktreePath: string,
-  additionalDirs: string[] = []
+  additionalRepos: RepoConfig[] = [],
+  targetBranch?: string
 ): Promise<void> {
   const args = ["claude"];
 
-  for (const dir of additionalDirs) {
-    args.push("--add-dir", dir);
+  for (const repo of additionalRepos) {
+    args.push("--add-dir", repo.worktreePath);
   }
 
   const env: Record<string, string> = { ...process.env } as Record<
     string,
     string
   >;
-  if (additionalDirs.length > 0) {
+  if (additionalRepos.length > 0) {
     env.CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD = "1";
+    env.VIBE_ADDITIONAL_REPOS = JSON.stringify(additionalRepos);
+  }
+  if (targetBranch) {
+    env.VIBE_BASE_BRANCH = targetBranch;
   }
 
   const proc = Bun.spawn(args, {
