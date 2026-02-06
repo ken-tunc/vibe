@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { replaceTilde, formatStatusOutput } from "./statusline";
+import { replaceTilde, formatStatusOutput, formatCost } from "./statusline";
 
 describe("replaceTilde", () => {
   test.each([
@@ -13,6 +13,18 @@ describe("replaceTilde", () => {
   });
 });
 
+describe("formatCost", () => {
+  test.each([
+    { cost: 0.001, expected: "$0.0010" },
+    { cost: 0.0099, expected: "$0.0099" },
+    { cost: 0.01, expected: "$0.01" },
+    { cost: 0.1234, expected: "$0.12" },
+    { cost: 1.5, expected: "$1.50" },
+  ])("formatCost($cost) = $expected", ({ cost, expected }) => {
+    expect(formatCost(cost)).toBe(expected);
+  });
+});
+
 describe("formatStatusOutput", () => {
   test.each([
     {
@@ -20,34 +32,47 @@ describe("formatStatusOutput", () => {
       model: "Opus",
       cwd: "~/test",
       branch: "main",
+      costUsd: 0.05 as number | undefined,
       usedPercentage: 25 as number | undefined,
-      expected: "🤖 Opus | 📁 ~/test | 🌿 main | 💭 25%",
+      expected: "🤖 Opus | 📁 ~/test | 🌿 main | 💰 $0.05 | 💭 25%",
     },
     {
       name: "no branch",
       model: "Sonnet",
       cwd: "/tmp",
       branch: "",
+      costUsd: 1.23 as number | undefined,
       usedPercentage: 25 as number | undefined,
-      expected: "🤖 Sonnet | 📁 /tmp | 💭 25%",
+      expected: "🤖 Sonnet | 📁 /tmp | 💰 $1.23 | 💭 25%",
+    },
+    {
+      name: "no cost",
+      model: "Opus",
+      cwd: "~/test",
+      branch: "main",
+      costUsd: undefined as number | undefined,
+      usedPercentage: 25 as number | undefined,
+      expected: "🤖 Opus | 📁 ~/test | 🌿 main | 💭 25%",
     },
     {
       name: "no percentage",
       model: "Opus",
       cwd: "~/test",
       branch: "main",
+      costUsd: 0.05 as number | undefined,
       usedPercentage: undefined as number | undefined,
-      expected: "🤖 Opus | 📁 ~/test | 🌿 main",
+      expected: "🤖 Opus | 📁 ~/test | 🌿 main | 💰 $0.05",
     },
     {
       name: "minimal",
       model: "Haiku",
       cwd: "/",
       branch: "",
+      costUsd: undefined as number | undefined,
       usedPercentage: undefined as number | undefined,
       expected: "🤖 Haiku | 📁 /",
     },
-  ])("$name", ({ model, cwd, branch, usedPercentage, expected }) => {
-    expect(formatStatusOutput(model, cwd, branch, usedPercentage)).toBe(expected);
+  ])("$name", ({ model, cwd, branch, costUsd, usedPercentage, expected }) => {
+    expect(formatStatusOutput(model, cwd, branch, costUsd, usedPercentage)).toBe(expected);
   });
 });

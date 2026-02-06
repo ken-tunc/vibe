@@ -8,6 +8,9 @@ interface StatusInput {
   workspace?: {
     current_dir?: string;
   };
+  cost?: {
+    total_cost_usd?: number;
+  };
   context_window?: {
     used_percentage?: number;
   };
@@ -33,6 +36,7 @@ export async function statusline(): Promise<void> {
     data.model?.display_name,
     replaceTilde(data.workspace?.current_dir, home),
     branch,
+    data.cost?.total_cost_usd,
     data.context_window?.used_percentage
   );
   console.log(output);
@@ -46,15 +50,26 @@ export function replaceTilde(path: string | undefined, home: string): string {
   return path;
 }
 
+export function formatCost(cost: number): string {
+  if (cost < 0.01) {
+    return `$${cost.toFixed(4)}`;
+  }
+  return `$${cost.toFixed(2)}`;
+}
+
 export function formatStatusOutput(
   model: string | undefined,
   cwd: string,
   branch: string,
+  costUsd: number | undefined,
   usedPercentage: number | undefined
 ): string {
   const parts = [`🤖 ${model || ""}`, `📁 ${cwd}`];
   if (branch) {
     parts.push(`🌿 ${branch}`);
+  }
+  if (costUsd !== undefined) {
+    parts.push(`💰 ${formatCost(costUsd)}`);
   }
   if (usedPercentage !== undefined) {
     parts.push(`💭 ${Math.round(usedPercentage)}%`);
