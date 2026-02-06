@@ -63,8 +63,7 @@ export async function newCommand(
   await runDirenvAllow(worktreePath);
   await addToClaudeConfig(homedir(), worktreePath);
 
-  const additionalDirs = additionalRepos.map((r) => r.worktreePath);
-  await runClaude(worktreePath, additionalDirs, baseBranch);
+  await runClaude(worktreePath, additionalRepos, baseBranch);
 
   console.log(`Worktree created at ${worktreePath}`);
   console.log(`Branch: ${branchName}`);
@@ -146,21 +145,24 @@ async function runDirenvAllow(path: string): Promise<void> {
 
 async function runClaude(
   worktreePath: string,
-  additionalDirs: string[] = [],
+  additionalRepos: RepoConfig[] = [],
   targetBranch?: string
 ): Promise<void> {
   const args = ["claude"];
 
-  for (const dir of additionalDirs) {
-    args.push("--add-dir", dir);
+  for (const repo of additionalRepos) {
+    args.push("--add-dir", repo.worktreePath);
   }
 
   const env: Record<string, string> = { ...process.env } as Record<
     string,
     string
   >;
-  if (additionalDirs.length > 0) {
+  if (additionalRepos.length > 0) {
     env.CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD = "1";
+    env.VIBE_ADDITIONAL_REPOS = JSON.stringify(
+      additionalRepos.map((r) => ({ path: r.worktreePath, branch: r.branch }))
+    );
   }
   if (targetBranch) {
     env.VIBE_BASE_BRANCH = targetBranch;
