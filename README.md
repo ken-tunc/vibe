@@ -2,8 +2,6 @@
 
 Vibe-coding tools for my personal use.
 
-A CLI that manages tasks as Git worktrees and launches Claude Code in each one.
-
 ## Requirements
 
 - [Bun](https://bun.sh/)
