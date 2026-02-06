@@ -36,13 +36,27 @@ export async function createWorktree(
   branchName: string,
   sourceBranch?: string
 ): Promise<void> {
-  const base = sourceBranch || "main";
+  const base = sourceBranch || (await getDefaultBranch(gitRoot));
   try {
     await $`git -C ${gitRoot} worktree add -b ${branchName} ${worktreePath} ${base}`;
   } catch {
     console.error("Failed to create worktree");
     process.exit(1);
   }
+}
+
+export async function getDefaultBranch(gitRoot: string): Promise<string> {
+  const ref = (
+    await $`git -C ${gitRoot} symbolic-ref refs/remotes/origin/HEAD`
+      .nothrow()
+      .text()
+  ).trim();
+  // refs/remotes/origin/main -> main
+  if (ref) {
+    const parts = ref.split("/");
+    return parts[parts.length - 1] ?? "main";
+  }
+  return "main";
 }
 
 export async function getBranch(dir: string | undefined): Promise<string> {

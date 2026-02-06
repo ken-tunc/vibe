@@ -1,4 +1,5 @@
 import { $ } from "bun";
+import { getDefaultBranch } from "./git";
 
 export async function getGhqRoot(): Promise<string> {
   const result = await $`ghq root`.nothrow().text();
@@ -56,7 +57,7 @@ export async function selectBranchWithFzf(
   );
 
   if (branchList.length === 0) {
-    return "main";
+    return await getDefaultBranch(repoPath);
   }
 
   const proc = Bun.spawn(
