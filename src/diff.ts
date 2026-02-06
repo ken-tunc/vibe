@@ -10,21 +10,33 @@ export async function diffCommand(): Promise<void> {
 
   const additionalRepos = parseAdditionalRepos();
 
-  if (additionalRepos.length === 0) {
-    await $`git diff ${targetBranch}...HEAD | npx -y difit --include-untracked`;
-    return;
-  }
-
-  const primaryDiff = await $`git diff ${targetBranch}...HEAD`.text();
-
-  const additionalDiffs: string[] = [];
+  const diffs = [await getRepoDiff(".", targetBranch)];
   for (const repo of additionalRepos) {
-    const diff = await $`git -C ${repo.worktreePath} diff ${repo.branch}...HEAD`.text();
-    additionalDiffs.push(diff);
+    diffs.push(await getRepoDiff(repo.worktreePath, repo.branch));
   }
 
-  const combinedDiff = [primaryDiff, ...additionalDiffs].join("");
-  await $`echo ${combinedDiff} | npx -y difit --include-untracked`;
+  const combinedDiff = diffs.join("");
+  await $`echo ${combinedDiff} | npx -y difit`;
+}
+
+async function getRepoDiff(repoPath: string, branch: string): Promise<string> {
+  const trackedDiff = await $`git -C ${repoPath} diff ${branch}`.text();
+
+  const untrackedFiles = (
+    await $`git -C ${repoPath} ls-files --others --exclude-standard`.text()
+  ).trim();
+
+  if (!untrackedFiles) return trackedDiff;
+
+  const untrackedDiffs: string[] = [];
+  for (const file of untrackedFiles.split("\n")) {
+    const diff = await $`git -C ${repoPath} diff --no-index /dev/null ${file}`
+      .nothrow()
+      .text();
+    untrackedDiffs.push(diff);
+  }
+
+  return trackedDiff + untrackedDiffs.join("");
 }
 
 function parseAdditionalRepos(): RepoConfig[] {
