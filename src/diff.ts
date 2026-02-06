@@ -1,5 +1,10 @@
 import { $ } from "bun";
-import type { RepoConfig } from "./new";
+
+interface RepoConfig {
+  path: string;
+  branch: string;
+  worktreePath: string;
+}
 
 export async function diffCommand(): Promise<void> {
   const targetBranch = process.env.VIBE_BASE_BRANCH;

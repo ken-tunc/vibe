@@ -1,14 +1,7 @@
 import { $ } from "bun";
 import { homedir } from "os";
 import { join } from "path";
-import { getGitRoot, getRepoName, createWorktree, getDefaultBranch, getWorkspacesDir } from "./git";
-import {
-  getGhqRoot,
-  listGhqRepos,
-  selectReposWithFzf,
-  selectBranchWithFzf,
-  updateRepos,
-} from "./ghq";
+import { getGitRoot, getRepoName, getWorkspacesDir } from "./git";
 
 const FILES_TO_COPY = [".envrc", ".claude/settings.local.json"];
 
@@ -75,6 +68,132 @@ export async function newCommand(
   }
 }
 
+// --- Git operations specific to this command ---
+
+async function createWorktree(
+  gitRoot: string,
+  worktreePath: string,
+  branchName: string,
+  sourceBranch?: string
+): Promise<void> {
+  const base = sourceBranch || (await getDefaultBranch(gitRoot));
+  try {
+    await $`git -C ${gitRoot} worktree add -b ${branchName} ${worktreePath} ${base}`;
+  } catch {
+    console.error("Failed to create worktree");
+    process.exit(1);
+  }
+}
+
+async function getDefaultBranch(gitRoot: string): Promise<string> {
+  const ref = (
+    await $`git -C ${gitRoot} symbolic-ref refs/remotes/origin/HEAD`
+      .nothrow()
+      .text()
+  ).trim();
+  // refs/remotes/origin/main -> main
+  if (ref) {
+    const parts = ref.split("/");
+    return parts[parts.length - 1] ?? "main";
+  }
+  return "main";
+}
+
+// --- ghq/fzf integration ---
+
+async function getGhqRoot(): Promise<string> {
+  const result = await $`ghq root`.nothrow().text();
+  return result.trim();
+}
+
+async function listGhqRepos(): Promise<string[]> {
+  const lines = await Array.fromAsync($`ghq list`.nothrow().lines());
+  return lines.filter((line) => line.length > 0);
+}
+
+async function selectReposWithFzf(
+  repos: string[],
+  currentRepo?: string
+): Promise<string[]> {
+  const filteredRepos = currentRepo
+    ? repos.filter((repo) => !repo.endsWith(`/${currentRepo}`))
+    : repos;
+
+  if (filteredRepos.length === 0) {
+    return [];
+  }
+
+  const input = filteredRepos.join("\n");
+  const proc = Bun.spawn(
+    ["fzf", "--multi", "--prompt", "Select additional repos> "],
+    {
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "inherit",
+    }
+  );
+
+  proc.stdin.write(input);
+  proc.stdin.end();
+
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    return [];
+  }
+
+  const output = await new Response(proc.stdout).text();
+  return output.split("\n").filter((line) => line.length > 0);
+}
+
+async function selectBranchWithFzf(
+  repoPath: string
+): Promise<string | undefined> {
+  const branches = await Array.fromAsync(
+    $`git -C ${repoPath} branch -a --format='%(refname:short)'`.nothrow().lines()
+  );
+
+  const branchList = branches.filter(
+    (b) => b.length > 0 && !b.includes("HEAD")
+  );
+
+  if (branchList.length === 0) {
+    return await getDefaultBranch(repoPath);
+  }
+
+  const proc = Bun.spawn(
+    ["fzf", "--prompt", `Select branch for ${repoPath.split("/").pop()}> `],
+    {
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "inherit",
+    }
+  );
+
+  proc.stdin.write(branchList.join("\n"));
+  proc.stdin.end();
+
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    return undefined;
+  }
+
+  const output = await new Response(proc.stdout).text();
+  const selected = output.trim();
+  if (!selected) return undefined;
+
+  // Remove origin/ prefix if present for worktree creation
+  return selected.replace(/^origin\//, "");
+}
+
+async function updateRepos(repos: string[]): Promise<void> {
+  if (repos.length === 0) return;
+
+  console.log("Updating repositories...");
+  await Promise.all(repos.map((repo) => $`ghq get --update ${repo}`.nothrow().quiet()));
+}
+
+// --- Multi-repo setup ---
+
 async function selectAndSetupAdditionalRepos(
   taskName: string,
   currentRepoName: string,
@@ -127,6 +246,8 @@ async function selectAndSetupAdditionalRepos(
 
   return repoConfigs;
 }
+
+// --- Helpers ---
 
 async function copyIfExists(src: string, dst: string): Promise<void> {
   const file = Bun.file(src);
