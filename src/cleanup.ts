@@ -3,7 +3,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { getGitRoot, getRepoName, getWorkspacesDir, getBranch } from "./git";
 
-async function getTaskList(workspacesDir: string): Promise<string[]> {
+export async function getTaskList(workspacesDir: string): Promise<string[]> {
   try {
     const entries = await readdir(workspacesDir, { withFileTypes: true });
     return entries.filter((e) => e.isDirectory()).map((e) => e.name);
@@ -12,7 +12,7 @@ async function getTaskList(workspacesDir: string): Promise<string[]> {
   }
 }
 
-function getCurrentTask(cwd: string, workspacesDir: string): string | undefined {
+export function getCurrentTask(cwd: string, workspacesDir: string): string | undefined {
   if (cwd.startsWith(workspacesDir + "/")) {
     const relativePath = cwd.slice(workspacesDir.length + 1);
     const taskName = relativePath.split("/")[0];
