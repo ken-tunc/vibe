@@ -42,6 +42,10 @@ Show the diff against the base branch using [difit](https://github.com/yoshiko-p
 
 Run this inside a worktree created by `vibe new` (requires the `VIBE_BASE_BRANCH` env var).
 
+### `vibe repos`
+
+List all repositories sharing the current branch name. Useful for discovering which repos belong to a multi-repo task created with `vibe new --multi`.
+
 ### `vibe cleanup`
 
 Interactively select and delete worktrees via fzf. Removes both the worktree and its branch.
