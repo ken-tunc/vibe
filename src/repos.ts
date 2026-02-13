@@ -1,9 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { getBranch } from "./git";
-
-const WORKSPACES_DIR = ".vibe-workspaces";
+import { getBranch, WORKSPACES_DIR } from "./git";
 
 export async function reposCommand(): Promise<void> {
   const cwd = process.cwd();
