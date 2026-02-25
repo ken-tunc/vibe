@@ -1,12 +1,4 @@
 import { $ } from "bun";
-import { homedir } from "node:os";
-import { join } from "node:path";
-
-export const WORKSPACES_DIR = ".vibe-workspaces";
-
-export function getWorkspacesDir(repoName: string): string {
-  return join(homedir(), WORKSPACES_DIR, repoName);
-}
 
 export async function getGitRoot(): Promise<string> {
   try {

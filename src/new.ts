@@ -1,16 +1,9 @@
 import { $ } from "bun";
 import { homedir } from "os";
 import { join } from "path";
-import { getGitRoot, getRepoName, createWorktree, getDefaultBranch, getWorkspacesDir } from "./git";
-import {
-  getGhqRoot,
-  listGhqRepos,
-  selectReposWithFzf,
-  selectBranchWithFzf,
-  updateRepos,
-} from "./ghq";
-
-const FILES_TO_COPY = [".envrc", ".claude/settings.local.json"];
+import { getGitRoot, createWorktree, getDefaultBranch } from "./git";
+import { getGhqRoot } from "./ghq";
+import { loadProjectConfig, PROJECT_CONFIG_FILE } from "./project";
 
 export interface RepoConfig {
   path: string;
@@ -27,10 +20,15 @@ export function sanitizeTaskName(task: string): string {
 
 export async function newCommand(
   task: string,
-  prefix: string,
-  sourceBranch?: string,
-  multi?: boolean
+  prefix: string
 ): Promise<void> {
+  const config = await loadProjectConfig(process.cwd());
+  if (!config) {
+    console.error(`${PROJECT_CONFIG_FILE} not found in current directory.`);
+    console.error('Run "vibe create-project" to create one.');
+    process.exit(1);
+  }
+
   const taskName = sanitizeTaskName(task);
   if (!taskName) {
     console.error("Invalid task name");
@@ -38,94 +36,89 @@ export async function newCommand(
   }
 
   const gitRoot = await getGitRoot();
-  const repoName = await getRepoName(gitRoot);
-  const worktreePath = join(getWorkspacesDir(repoName), taskName);
+  const baseBranch = await getDefaultBranch(gitRoot);
+  const ghqRoot = await getGhqRoot();
   const branchName = `${prefix}${taskName}`;
 
-  let additionalRepos: RepoConfig[] = [];
+  const additionalRepos: RepoConfig[] = [];
 
-  if (multi) {
-    additionalRepos = await selectAndSetupAdditionalRepos(taskName, repoName, prefix);
-    if (additionalRepos.length === 0) {
-      console.log("No additional repositories selected.");
-    }
-  }
+  for (const [ghqPath, repoConfig] of Object.entries(config.repos)) {
+    const repoName = ghqPath.split("/").pop() || ghqPath;
+    const absolutePath = join(ghqRoot, ghqPath);
 
-  const baseBranch = sourceBranch || await getDefaultBranch(gitRoot);
-
-  console.log(`Creating worktree at ${worktreePath}...`);
-  await createWorktree(gitRoot, worktreePath, branchName, baseBranch);
-
-  for (const file of FILES_TO_COPY) {
-    await copyIfExists(join(gitRoot, file), join(worktreePath, file));
-  }
-
-  await runDirenvAllow(worktreePath);
-  await addToClaudeConfig(homedir(), worktreePath);
-
-  await runClaude(worktreePath, additionalRepos, baseBranch);
-
-  console.log(`Worktree created at ${worktreePath}`);
-  console.log(`Branch: ${branchName}`);
-  if (additionalRepos.length > 0) {
-    console.log("Additional repositories:");
-    for (const repo of additionalRepos) {
-      console.log(`  - ${repo.worktreePath} (branch: ${branchName})`);
-    }
-  }
-}
-
-async function selectAndSetupAdditionalRepos(
-  taskName: string,
-  currentRepoName: string,
-  prefix: string
-): Promise<RepoConfig[]> {
-  const ghqRoot = await getGhqRoot();
-  const allRepos = await listGhqRepos();
-  const selectedRepos = await selectReposWithFzf(allRepos, currentRepoName);
-
-  if (selectedRepos.length === 0) {
-    return [];
-  }
-
-  // Update selected repos
-  await updateRepos(selectedRepos);
-
-  const repoConfigs: RepoConfig[] = [];
-
-  for (const repo of selectedRepos) {
-    const repoPath = join(ghqRoot, repo);
-    const repoName = repo.split("/").pop() || repo;
-
-    console.log(`\nConfiguring ${repoName}...`);
-    const branch = await selectBranchWithFzf(repoPath);
-
-    if (!branch) {
-      console.log(`Skipping ${repoName} (no branch selected)`);
+    const isGitRepo = (await $`git -C ${absolutePath} rev-parse --git-dir`.nothrow().quiet()).exitCode === 0;
+    if (!isGitRepo) {
+      console.error(`Repository not found: ${ghqPath}`);
+      console.error(`Run "ghq get ${ghqPath}" first.`);
       continue;
     }
 
-    const worktreePath = join(getWorkspacesDir(repoName), taskName);
-    const branchName = `${prefix}${taskName}`;
+    const sourceBranch =
+      repoConfig.defaultTarget || (await getDefaultBranch(absolutePath));
+    const worktreePath = join(process.cwd(), repoName);
 
-    console.log(`Creating worktree for ${repoName} at ${worktreePath}...`);
-    await createWorktree(repoPath, worktreePath, branchName, branch);
+    console.log(`Creating worktree for ${repoName}...`);
+    await createWorktree(absolutePath, worktreePath, branchName, sourceBranch);
 
-    for (const file of FILES_TO_COPY) {
-      await copyIfExists(join(repoPath, file), join(worktreePath, file));
+    await copyWorktreeIncludeFiles(absolutePath, worktreePath);
+
+    if (repoConfig.setupCommand) {
+      console.log(`Running setup for ${repoName}...`);
+      const result =
+        await $`sh -c ${repoConfig.setupCommand}`.cwd(worktreePath).nothrow();
+      if (result.exitCode !== 0) {
+        console.error(`Warning: setupCommand failed for ${repoName}`);
+      }
     }
 
     await runDirenvAllow(worktreePath);
     await addToClaudeConfig(homedir(), worktreePath);
 
-    repoConfigs.push({
-      path: repoPath,
-      branch,
+    additionalRepos.push({
+      path: absolutePath,
+      branch: sourceBranch,
       worktreePath,
     });
   }
 
-  return repoConfigs;
+  if (additionalRepos.length === 0) {
+    console.error("No repositories were set up.");
+    process.exit(1);
+  }
+
+  await runClaude(process.cwd(), additionalRepos, baseBranch);
+
+  console.log("\nWorkspaces created:");
+  for (const repo of additionalRepos) {
+    console.log(`  - ${repo.worktreePath} (branch: ${branchName})`);
+  }
+}
+
+async function copyWorktreeIncludeFiles(
+  repoPath: string,
+  worktreePath: string
+): Promise<void> {
+  const includeFile = Bun.file(join(repoPath, ".worktreeinclude"));
+  if (!(await includeFile.exists())) return;
+
+  const content = await includeFile.text();
+  const patterns = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("#"));
+
+  if (patterns.length === 0) return;
+
+  const result = await $`git -C ${repoPath} ls-files --others --ignored --exclude-standard -- ${patterns}`
+    .nothrow()
+    .text();
+  const files = result
+    .split("\n")
+    .filter((f) => f.length > 0);
+
+  for (const file of files) {
+    await copyIfExists(join(repoPath, file), join(worktreePath, file));
+  }
 }
 
 async function copyIfExists(src: string, dst: string): Promise<void> {

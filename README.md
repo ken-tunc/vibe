@@ -6,7 +6,7 @@ Vibe-coding tools for my personal use.
 
 - [Bun](https://bun.sh/)
 - [fzf](https://github.com/junegunn/fzf)
-- [ghq](https://github.com/x-motemen/ghq) (for `--multi`)
+- [ghq](https://github.com/x-motemen/ghq)
 - [difit](https://github.com/yoshiko-pg/difit) (auto-installed via npx on `diff`)
 
 ## Install
@@ -19,36 +19,62 @@ This produces `dist/vibe`. Copy it somewhere on your `PATH`.
 
 ## Usage
 
-### `vibe new <task>`
+### `vibe create-project`
 
-Create a worktree for the task and launch Claude Code.
+Create a `.vibe-project.json` interactively. Select repositories with fzf and choose a default target branch for each.
 
 ```sh
+vibe create-project
+# Select repos via fzf --multi
+# For each repo, select the target branch
+# Creates .vibe-project.json in the current directory
+```
+
+Edit the generated file to configure `setupCommand` for each repo:
+
+```json
+{
+  "repos": {
+    "github.com/owner/backend": {
+      "defaultTarget": "develop",
+      "setupCommand": "pnpm install"
+    },
+    "github.com/owner/frontend": {
+      "defaultTarget": "main",
+      "setupCommand": "npm install"
+    }
+  }
+}
+```
+
+Git-ignored files matching `.worktreeinclude` patterns in each repo are automatically copied to the worktree (same convention as `claude -w`).
+
+### `vibe new <task>`
+
+Create worktrees for all repos in `.vibe-project.json` and launch Claude Code.
+
+Run this inside a project worktree created by `claude -w`:
+
+```sh
+# 1. Start a worktree session for the project repo
+claude -w
+
+# 2. Inside the worktree, create sub-repo workspaces
 vibe new my-feature
-# Creates worktree at ~/.vibe-workspaces/<repo>/my-feature
-# Creates branch feature/my-feature from the default branch
-# Launches Claude Code in the worktree
+# Creates worktrees for each repo inside the current directory
+# Copies git-ignored files matching .worktreeinclude, runs setupCommand
+# Launches Claude Code with --add-dir for each repo
 ```
 
 **Options:**
 
-- `-b <branch>` — Base branch (default: remote HEAD)
 - `-p, --prefix <prefix>` — Branch name prefix (default: `feature/`)
-- `-m, --multi` — Select additional ghq-managed repos to work on together
 
 ### `vibe diff`
 
 Show the diff against the base branch using [difit](https://github.com/yoshiko-pg/difit). Includes untracked files.
 
-Run this inside a worktree created by `vibe new` (requires the `VIBE_BASE_BRANCH` env var).
-
-### `vibe repos`
-
-List all repositories sharing the current branch name. Useful for discovering which repos belong to a multi-repo task created with `vibe new --multi`.
-
-### `vibe cleanup`
-
-Interactively select and delete worktrees via fzf. Removes both the worktree and its branch.
+Run this inside a session started by `vibe new` (requires the `VIBE_BASE_BRANCH` env var).
 
 ### `vibe statusline`
 

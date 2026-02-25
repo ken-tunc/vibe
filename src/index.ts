@@ -1,18 +1,16 @@
-import { cleanupCommand } from "./cleanup";
 import { diffCommand } from "./diff";
 import { newCommand } from "./new";
-import { reposCommand } from "./repos";
+import { createProjectCommand } from "./project";
 import { statusline } from "./statusline";
 
 function printUsage(): void {
   console.log(`vibe
 
 Usage:
-  vibe new [-b <branch>] [-m|--multi] [-p|--prefix <prefix>] <task>    Create a new worktree for a task
-  vibe diff                                                            Show diff against base branch using difit
-  vibe cleanup                                                         Delete completed tasks (worktrees)
-  vibe repos                                                           List repositories for the current task
-  vibe statusline                                                      Output status line from JSON input `)
+  vibe create-project                              Create .vibe-project.json interactively
+  vibe new [-p|--prefix <prefix>] <task>           Create worktrees and start Claude session
+  vibe diff                                        Show diff against base branch using difit
+  vibe statusline                                  Output status line from JSON input`);
 }
 
 async function main(): Promise<void> {
@@ -34,33 +32,17 @@ async function main(): Promise<void> {
       await diffCommand();
       break;
 
-    case "cleanup":
-      await cleanupCommand();
-      break;
-
-    case "repos":
-      await reposCommand();
+    case "create-project":
+      await createProjectCommand();
       break;
 
     case "new": {
-      let sourceBranch: string | undefined;
-      let multi = false;
       let prefix = "feature/";
       let taskIndex = 1;
 
       // Parse options
       while (taskIndex < args.length) {
-        if (args[taskIndex] === "-b") {
-          if (taskIndex + 1 >= args.length) {
-            console.error("Missing branch name after -b");
-            process.exit(1);
-          }
-          sourceBranch = args[taskIndex + 1];
-          taskIndex += 2;
-        } else if (args[taskIndex] === "-m" || args[taskIndex] === "--multi") {
-          multi = true;
-          taskIndex += 1;
-        } else if (args[taskIndex] === "-p" || args[taskIndex] === "--prefix") {
+        if (args[taskIndex] === "-p" || args[taskIndex] === "--prefix") {
           if (taskIndex + 1 >= args.length) {
             console.error("Missing prefix after -p/--prefix");
             process.exit(1);
@@ -78,7 +60,7 @@ async function main(): Promise<void> {
         printUsage();
         process.exit(1);
       }
-      await newCommand(task, prefix, sourceBranch, multi);
+      await newCommand(task, prefix);
       break;
     }
 
