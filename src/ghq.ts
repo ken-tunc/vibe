@@ -13,7 +13,8 @@ export async function listGhqRepos(): Promise<string[]> {
 
 export async function selectReposWithFzf(
   repos: string[],
-  currentRepo?: string
+  currentRepo?: string,
+  prompt = "Select additional repos> "
 ): Promise<string[]> {
   const filteredRepos = currentRepo
     ? repos.filter((repo) => !repo.endsWith(`/${currentRepo}`))
@@ -25,7 +26,7 @@ export async function selectReposWithFzf(
 
   const input = filteredRepos.join("\n");
   const proc = Bun.spawn(
-    ["fzf", "--multi", "--prompt", "Select additional repos> "],
+    ["fzf", "--multi", "--prompt", prompt],
     {
       stdin: "pipe",
       stdout: "pipe",
