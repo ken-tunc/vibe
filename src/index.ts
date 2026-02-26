@@ -1,4 +1,3 @@
-import { diffCommand } from "./diff";
 import { newCommand } from "./new";
 import { createProjectCommand } from "./project";
 import { statusline } from "./statusline";
@@ -9,7 +8,6 @@ function printUsage(): void {
 Usage:
   vibe create-project                              Create .vibe-project.json interactively
   vibe new [-p|--prefix <prefix>] <task>           Create worktrees and start Claude session
-  vibe diff                                        Show diff against base branch using difit
   vibe statusline                                  Output status line from JSON input`);
 }
 
@@ -26,10 +24,6 @@ async function main(): Promise<void> {
   switch (command) {
     case "statusline":
       await statusline();
-      break;
-
-    case "diff":
-      await diffCommand();
       break;
 
     case "create-project":
