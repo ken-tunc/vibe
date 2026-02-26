@@ -50,7 +50,7 @@ export function replaceTilde(path: string | undefined, home: string): string {
   return path;
 }
 
-export function compressPath(path: string, maxLength: number = 30): string {
+export function compressPath(path: string, maxLength: number = 50): string {
   if (path.length <= maxLength) return path;
 
   const parts = path.split("/");

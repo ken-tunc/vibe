@@ -15,12 +15,12 @@ describe("replaceTilde", () => {
 
 describe("compressPath", () => {
   test.each([
-    { path: "~/short", maxLength: 30, expected: "~/short" },
-    { path: "~/a/b/c", maxLength: 30, expected: "~/a/b/c" },
+    { path: "~/short", maxLength: 50, expected: "~/short" },
+    { path: "~/a/b/c", maxLength: 50, expected: "~/a/b/c" },
     {
-      path: "~/very/long/directory/structure",
-      maxLength: 30,
-      expected: "~/v/l/d/structure",
+      path: "~/very/long/directory/structure/that/is/really/too/long/to/display",
+      maxLength: 50,
+      expected: "~/v/l/d/s/t/i/r/t/l/t/display",
     },
     {
       path: "/home/user/projects/my-app",
@@ -32,8 +32,8 @@ describe("compressPath", () => {
       maxLength: 20,
       expected: "~/p/my-application",
     },
-    { path: "/tmp", maxLength: 30, expected: "/tmp" },
-    { path: "~/test", maxLength: 30, expected: "~/test" },
+    { path: "/tmp", maxLength: 50, expected: "/tmp" },
+    { path: "~/test", maxLength: 50, expected: "~/test" },
   ])(
     "compressPath($path, $maxLength) = $expected",
     ({ path, maxLength, expected }) => {
