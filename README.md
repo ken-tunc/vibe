@@ -7,7 +7,6 @@ Vibe-coding tools for my personal use.
 - [Bun](https://bun.sh/)
 - [fzf](https://github.com/junegunn/fzf)
 - [ghq](https://github.com/x-motemen/ghq)
-- [difit](https://github.com/yoshiko-pg/difit) (auto-installed via npx on `diff`)
 
 ## Install
 
@@ -69,12 +68,6 @@ vibe new my-feature
 **Options:**
 
 - `-p, --prefix <prefix>` — Branch name prefix (default: `feature/`)
-
-### `vibe diff`
-
-Show the diff against the base branch using [difit](https://github.com/yoshiko-pg/difit). Includes untracked files.
-
-Run this inside a session started by `vibe new` (requires the `VIBE_BASE_BRANCH` env var).
 
 ### `vibe statusline`
 
