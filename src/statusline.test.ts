@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { replaceTilde, formatStatusOutput, formatCost } from "./statusline";
+import { replaceTilde, compressPath, formatStatusOutput, formatCost } from "./statusline";
 
 describe("replaceTilde", () => {
   test.each([
@@ -11,6 +11,35 @@ describe("replaceTilde", () => {
   ])("replaceTilde($path, $home) = $expected", ({ path, home, expected }) => {
     expect(replaceTilde(path, home)).toBe(expected);
   });
+});
+
+describe("compressPath", () => {
+  test.each([
+    { path: "~/short", maxLength: 50, expected: "~/short" },
+    { path: "~/a/b/c", maxLength: 50, expected: "~/a/b/c" },
+    {
+      path: "~/very/long/directory/structure/that/is/really/too/long/to/display",
+      maxLength: 50,
+      expected: "~/v/l/d/s/t/i/r/t/l/t/display",
+    },
+    {
+      path: "/home/user/projects/my-app",
+      maxLength: 20,
+      expected: "/h/u/p/my-app",
+    },
+    {
+      path: "~/projects/my-application",
+      maxLength: 20,
+      expected: "~/p/my-application",
+    },
+    { path: "/tmp", maxLength: 50, expected: "/tmp" },
+    { path: "~/test", maxLength: 50, expected: "~/test" },
+  ])(
+    "compressPath($path, $maxLength) = $expected",
+    ({ path, maxLength, expected }) => {
+      expect(compressPath(path, maxLength)).toBe(expected);
+    }
+  );
 });
 
 describe("formatCost", () => {

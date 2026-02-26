@@ -34,7 +34,7 @@ export async function statusline(): Promise<void> {
   const branch = await getBranch(data.workspace?.current_dir);
   const output = formatStatusOutput(
     data.model?.display_name,
-    replaceTilde(data.workspace?.current_dir, home),
+    compressPath(replaceTilde(data.workspace?.current_dir, home)),
     branch,
     data.cost?.total_cost_usd,
     data.context_window?.used_percentage
@@ -48,6 +48,19 @@ export function replaceTilde(path: string | undefined, home: string): string {
     return "~" + path.slice(home.length);
   }
   return path;
+}
+
+export function compressPath(path: string, maxLength: number = 50): string {
+  if (path.length <= maxLength) return path;
+
+  const parts = path.split("/");
+  if (parts.length <= 2) return path;
+
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  const middle = parts.slice(1, -1);
+
+  return [first, ...middle.map((p) => p.charAt(0)), last].join("/");
 }
 
 export function formatCost(cost: number): string {
