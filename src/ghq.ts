@@ -82,8 +82,7 @@ export async function selectBranchWithFzf(
   const selected = output.trim();
   if (!selected) return undefined;
 
-  // Remove origin/ prefix if present for worktree creation
-  return selected.replace(/^origin\//, "");
+  return selected;
 }
 
 export async function updateRepos(repos: string[]): Promise<void> {
