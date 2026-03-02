@@ -1,7 +1,7 @@
 import { $ } from "bun";
 import { homedir } from "os";
 import { join } from "path";
-import { getGitRoot, createWorktree, getDefaultBranch } from "./git";
+import { createWorktree, getDefaultBranch } from "./git";
 import { getGhqRoot } from "./ghq";
 import { loadProjectConfig, PROJECT_CONFIG_FILE } from "./project";
 
@@ -35,8 +35,6 @@ export async function newCommand(
     process.exit(1);
   }
 
-  const gitRoot = await getGitRoot();
-  const baseBranch = await getDefaultBranch(gitRoot);
   const ghqRoot = await getGhqRoot();
   const branchName = `${prefix}${taskName}`;
 
@@ -86,7 +84,7 @@ export async function newCommand(
     process.exit(1);
   }
 
-  await runClaude(process.cwd(), additionalRepos, baseBranch);
+  await runClaude(process.cwd(), additionalRepos);
 
   console.log("\nWorkspaces created:");
   for (const repo of additionalRepos) {
@@ -138,8 +136,7 @@ async function runDirenvAllow(path: string): Promise<void> {
 
 async function runClaude(
   worktreePath: string,
-  additionalRepos: RepoConfig[] = [],
-  targetBranch?: string
+  additionalRepos: RepoConfig[] = []
 ): Promise<void> {
   const args = ["claude"];
 
@@ -154,9 +151,6 @@ async function runClaude(
   if (additionalRepos.length > 0) {
     env.CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD = "1";
     env.VIBE_ADDITIONAL_REPOS = JSON.stringify(additionalRepos);
-  }
-  if (targetBranch) {
-    env.VIBE_BASE_BRANCH = targetBranch;
   }
 
   const proc = Bun.spawn(args, {
