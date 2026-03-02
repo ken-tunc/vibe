@@ -3,13 +3,10 @@ import type { RepoConfig } from "./new";
 import { loadProjectConfig } from "./project";
 
 export async function diffCommand(): Promise<void> {
-  let targetBranch = process.env.VIBE_BASE_BRANCH;
+  const config = await loadProjectConfig(process.cwd());
+  const targetBranch = config?.baseBranch;
   if (!targetBranch) {
-    const config = await loadProjectConfig(process.cwd());
-    targetBranch = config?.baseBranch;
-  }
-  if (!targetBranch) {
-    console.error("Base branch is not configured. Set VIBE_BASE_BRANCH or add baseBranch to .vibe-project.json.");
+    console.error("baseBranch is not configured. Add baseBranch to .vibe-project.json.");
     process.exit(1);
   }
 
