@@ -1,10 +1,15 @@
 import { $ } from "bun";
 import type { RepoConfig } from "./new";
+import { loadProjectConfig } from "./project";
 
 export async function diffCommand(): Promise<void> {
-  const targetBranch = process.env.VIBE_BASE_BRANCH;
+  let targetBranch = process.env.VIBE_BASE_BRANCH;
   if (!targetBranch) {
-    console.error("VIBE_BASE_BRANCH is not set. Run this command from a vibe worktree.");
+    const config = await loadProjectConfig(process.cwd());
+    targetBranch = config?.baseBranch;
+  }
+  if (!targetBranch) {
+    console.error("Base branch is not configured. Set VIBE_BASE_BRANCH or add baseBranch to .vibe-project.json.");
     process.exit(1);
   }
 
