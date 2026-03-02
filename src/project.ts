@@ -14,7 +14,6 @@ export interface ProjectRepoConfig {
 }
 
 export interface VibeProjectConfig {
-  baseBranch?: string;
   repos: Record<string, ProjectRepoConfig>;
 }
 
