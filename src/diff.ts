@@ -1,18 +1,12 @@
 import { $ } from "bun";
+import { getDefaultBranch } from "./git";
 import type { RepoConfig } from "./new";
-import { loadProjectConfig } from "./project";
 
 export async function diffCommand(): Promise<void> {
-  const config = await loadProjectConfig(process.cwd());
-  const targetBranch = config?.baseBranch;
-  if (!targetBranch) {
-    console.error("baseBranch is not configured. Add baseBranch to .vibe-project.json.");
-    process.exit(1);
-  }
-
   const additionalRepos = parseAdditionalRepos();
 
-  const diffs = [await getRepoDiff(".", targetBranch)];
+  const currentTargetBranch = await getDefaultBranch(".");
+  const diffs = [await getRepoDiff(".", currentTargetBranch)];
   for (const repo of additionalRepos) {
     diffs.push(await getRepoDiff(repo.worktreePath, repo.branch));
   }
